@@ -146,5 +146,47 @@ ${docText.substring(0, 25000)}`
       }
     });
     return response.text;
+  },
+
+  generateRecommendations: async (userData: { documents: any[], quizzes: any[], flashcards: any[] }) => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Analyze the following student study data and provide 3-4 personalized study recommendations.
+      
+      STUDY DATA:
+      Documents: ${userData.documents.map(d => d.title).join(', ')}
+      Quizzes: ${userData.quizzes.map(q => `${q.title} (Score: ${q.score}%)`).join(', ')}
+      Flashcard Sets: ${userData.flashcards.map(f => f.title).join(', ')}
+      
+      Requirements:
+      1. Suggest specific documents to review if scores are low.
+      2. Suggest creating flashcards for documents that don't have them.
+      3. Suggest taking a quiz if a document was uploaded but not tested.
+      4. Suggest a "Deep Dive" into a concept mentioned in their documents.
+      
+      Return as JSON.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              type: { type: Type.STRING, enum: ['review', 'quiz', 'concept', 'explore'] },
+              title: { type: Type.STRING },
+              description: { type: Type.STRING },
+              priority: { type: Type.STRING, enum: ['low', 'medium', 'high'] },
+              targetId: { type: Type.STRING, description: 'Optional ID of related document if applicable' }
+            },
+            required: ['type', 'title', 'description', 'priority']
+          }
+        }
+      }
+    });
+    try {
+      return JSON.parse(response.text || "[]");
+    } catch {
+      return [];
+    }
   }
 };

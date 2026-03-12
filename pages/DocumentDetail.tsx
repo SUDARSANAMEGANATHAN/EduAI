@@ -87,8 +87,9 @@ const DocumentDetail: React.FC = () => {
   const handleSendMessage = async () => {
     if (!input.trim() || !doc || isTyping) return;
     
+    const user = storageService.getCurrentSession();
     const currentInput = input;
-    const userMsg: ChatMessage = { role: 'user', content: currentInput, timestamp: Date.now() };
+    const userMsg: ChatMessage = { role: 'user', content: currentInput, timestamp: Date.now(), userId: user?.id || '1' };
     
     // 1. Update UI with user message
     setMessages(prev => [...prev, userMsg]);
@@ -100,7 +101,7 @@ const DocumentDetail: React.FC = () => {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
       
       // 2. Prepare a placeholder AI message
-      const aiMsg: ChatMessage = { role: 'model', content: "", timestamp: Date.now() };
+      const aiMsg: ChatMessage = { role: 'model', content: "", timestamp: Date.now(), userId: user?.id || '1' };
       setMessages(prev => [...prev, aiMsg]);
 
       // 3. Start streaming
@@ -119,11 +120,11 @@ const DocumentDetail: React.FC = () => {
       );
 
       // 4. Save the finalized message to storage
-      storageService.saveChatMessage(doc.id, { role: 'model', content: finalResponse, timestamp: Date.now() });
+      storageService.saveChatMessage(doc.id, { role: 'model', content: finalResponse, timestamp: Date.now(), userId: user?.id || '1' });
       
     } catch (error) {
       console.error("Chat failed", error);
-      const errorMsg: ChatMessage = { role: 'model', content: "Sorry, I encountered an error while processing your request.", timestamp: Date.now() };
+      const errorMsg: ChatMessage = { role: 'model', content: "Sorry, I encountered an error while processing your request.", timestamp: Date.now(), userId: user?.id || '1' };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsTyping(false);
@@ -149,10 +150,12 @@ const DocumentDetail: React.FC = () => {
     setIsLoading(true);
     setExplanation(null);
     try {
+      const user = storageService.getCurrentSession();
       const result = await geminiService.explainConcept(doc.extractedText, conceptInput);
       setExplanation(result || "Could not generate explanation.");
       storageService.addActivity({
         id: Math.random().toString(36).substr(2, 9),
+        userId: user?.id || '1',
         type: 'concept',
         description: `Asked for explanation of: ${conceptInput}`,
         timestamp: Date.now()
@@ -168,9 +171,11 @@ const DocumentDetail: React.FC = () => {
     if (!doc) return;
     setIsLoading(true);
     try {
+      const user = storageService.getCurrentSession();
       const cards = await geminiService.generateFlashcards(doc.extractedText, flashcardCount);
       const newSet: FlashcardSet = {
         id: Math.random().toString(36).substr(2, 9),
+        userId: user?.id || '1',
         documentId: doc.id,
         title: `Cards from ${doc.title}`,
         cards: cards.map((c: any) => ({
@@ -194,9 +199,11 @@ const DocumentDetail: React.FC = () => {
     if (!doc) return;
     setIsLoading(true);
     try {
+      const user = storageService.getCurrentSession();
       const questions = await geminiService.generateQuiz(doc.extractedText, quizQuestionCount);
       const newQuiz: Quiz = {
         id: Math.random().toString(36).substr(2, 9),
+        userId: user?.id || '1',
         documentId: doc.id,
         title: `Quiz for ${doc.title}`,
         questions: questions.map((q: any) => ({ ...q, id: Math.random().toString(36).substr(2, 9) }))

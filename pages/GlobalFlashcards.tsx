@@ -25,9 +25,11 @@ const GlobalFlashcards: React.FC = () => {
     if (!selectedDoc) return;
     setIsGenerating(true);
     try {
+      const user = storageService.getCurrentSession();
       const cards = await geminiService.generateFlashcards(selectedDoc.extractedText, flashcardCount);
       const newSet: FlashcardSet = {
         id: Math.random().toString(36).substr(2, 9),
+        userId: user?.id || '1',
         documentId: selectedDoc.id,
         title: `Cards from ${selectedDoc.title}`,
         cards: cards.map((c: any) => ({

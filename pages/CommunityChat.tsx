@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import { storageService } from '../services/storageService';
 import { geminiService } from '../services/geminiService';
 import { CommunityMessage } from '../types';
-import { Send, Users, Sparkles, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
+import { Send, Users, Sparkles, MessageCircle, ShieldCheck, Zap, Paperclip, File as FileIcon, Image as ImageIcon, Download, X, FileText, AlertCircle } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
 const CommunityChat: React.FC = () => {
@@ -13,8 +13,11 @@ const CommunityChat: React.FC = () => {
   const [input, setInput] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [isAiActive, setIsAiActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<{ file: File, preview: string } | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Initialize socket connection
@@ -39,17 +42,50 @@ const CommunityChat: React.FC = () => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAiTyping]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileError(null);
+
+    // Limit file size to 1MB for LocalStorage safety
+    if (file.size > 1024 * 1024) {
+      setFileError("File too large (max 1MB for community sharing)");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedFile({
+        file,
+        preview: reader.result as string
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || !user) return;
+    if ((!input.trim() && !selectedFile) || !user) return;
     
+    const messageId = Math.random().toString(36).substr(2, 9);
     const userMessage: CommunityMessage = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: messageId,
       userId: user.id,
       userName: user.name,
       userAvatar: user.avatar || '',
       content: input,
       timestamp: Date.now()
     };
+
+    if (selectedFile) {
+      userMessage.file = {
+        url: selectedFile.preview,
+        name: selectedFile.file.name,
+        type: selectedFile.file.type,
+        size: selectedFile.file.size
+      };
+    }
 
     // Emit message to server
     socketRef.current?.emit('send_message', userMessage);
@@ -60,6 +96,8 @@ const CommunityChat: React.FC = () => {
     
     const currentInput = input;
     setInput('');
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
 
     // If AI is toggled or specific conditions met, get AI response
     if (isAiActive || input.toLowerCase().includes('@ai') || input.toLowerCase().includes('bot')) {
@@ -88,6 +126,53 @@ const CommunityChat: React.FC = () => {
         setIsAiTyping(false);
       }
     }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const renderFileContent = (file: { url: string, name: string, type: string, size: number }, isMe: boolean) => {
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf';
+
+    if (isImage) {
+      return (
+        <div className="mt-3 rounded-2xl overflow-hidden border border-black/5 shadow-sm group/img relative">
+          <img src={file.url} alt={file.name} className="max-w-full max-h-80 object-contain bg-gray-50/50" referrerPolicy="no-referrer" />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
+            <a href={file.url} download={file.name} className="p-3 bg-white rounded-full text-slate-900 hover:scale-110 transition-transform shadow-xl">
+              <Download size={20} />
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`mt-3 flex items-center gap-4 p-4 rounded-2xl border shadow-sm group/file transition-all ${
+        isMe ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-gray-50 border-gray-100 hover:bg-gray-100'
+      }`}>
+        <div className={`p-3 rounded-xl ${isPdf ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'}`}>
+          {isPdf ? <FileText size={24} /> : <FileIcon size={24} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-bold truncate ${isMe ? 'text-white' : 'text-slate-900'}`}>{file.name}</p>
+          <p className={`text-[10px] font-black uppercase tracking-widest opacity-60 ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
+            {formatFileSize(file.size)} • {file.type.split('/')[1]?.toUpperCase() || 'FILE'}
+          </p>
+        </div>
+        <a href={file.url} download={file.name} className={`p-2 rounded-xl shadow-sm border transition-all hover:scale-110 ${
+          isMe ? 'bg-white/20 border-white/10 text-white' : 'bg-white border-gray-100 text-slate-400 hover:text-green-600'
+        }`}>
+          <Download size={20} />
+        </a>
+      </div>
+    );
   };
 
   return (
@@ -156,7 +241,8 @@ const CommunityChat: React.FC = () => {
                       ? 'bg-gradient-to-br from-indigo-50 to-white text-indigo-900 border-2 border-indigo-100 rounded-tl-none shadow-indigo-50 ring-4 ring-white'
                       : 'bg-white text-gray-800 rounded-tl-none border border-gray-100 shadow-sm ring-4 ring-white'
                   }`}>
-                    {msg.content}
+                    {msg.content && <p>{msg.content}</p>}
+                    {msg.file && renderFileContent(msg.file, isMe)}
                   </div>
                 </div>
               </div>
@@ -180,15 +266,58 @@ const CommunityChat: React.FC = () => {
 
       {/* Input Area */}
       <div className="p-8 bg-white border-t border-gray-100 flex flex-col gap-4 shrink-0 shadow-2xl z-10">
+        {fileError && (
+          <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in slide-in-from-top-2">
+            <AlertCircle size={18} />
+            <p className="text-xs font-bold">{fileError}</p>
+            <button onClick={() => setFileError(null)} className="ml-auto p-1 hover:bg-red-100 rounded-lg">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {selectedFile && (
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 animate-in slide-in-from-bottom-4">
+            <div className="shrink-0 w-12 h-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
+              {selectedFile.file.type.startsWith('image/') ? (
+                <img src={selectedFile.preview} className="w-full h-full object-cover" alt="Preview" />
+              ) : (
+                <FileIcon className="text-gray-400" size={24} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-800 truncate">{selectedFile.file.name}</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{formatFileSize(selectedFile.file.size)}</p>
+            </div>
+            <button onClick={() => setSelectedFile(null)} className="p-2 bg-white rounded-xl shadow-sm border border-gray-100 text-gray-400 hover:text-red-500 hover:scale-110 transition-all">
+              <X size={20} />
+            </button>
+          </div>
+        )}
+
         <div className="flex gap-4">
-          <div className="flex-1 relative group">
+          <div className="flex-1 relative group flex items-center">
+            <input 
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+              accept="image/*,application/pdf,text/plain,.doc,.docx"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute left-4 p-2.5 rounded-xl bg-white text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all border border-gray-100 shadow-sm z-10"
+              title="Attach File"
+            >
+              <Paperclip size={20} />
+            </button>
             <input 
               type="text" 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={isAiActive ? "Ask the AI Bot a question..." : "Share an insight with the community..."}
-              className={`w-full border-2 px-8 py-5 rounded-[1.5rem] outline-none transition-all font-bold text-gray-800 placeholder:text-gray-300 shadow-sm ${
+              placeholder={isAiActive ? "Ask the AI Bot a question..." : "Share an insight or file..."}
+              className={`w-full border-2 pl-16 pr-16 py-5 rounded-[1.5rem] outline-none transition-all font-bold text-gray-800 placeholder:text-gray-300 shadow-sm ${
                 isAiActive ? 'bg-indigo-50 border-indigo-200 focus:border-indigo-600 focus:bg-white' : 'bg-gray-50 border-transparent focus:border-green-600 focus:bg-white'
               }`}
             />
@@ -204,7 +333,7 @@ const CommunityChat: React.FC = () => {
           </div>
           <button 
             onClick={handleSend}
-            disabled={!input.trim() || isAiTyping}
+            disabled={(!input.trim() && !selectedFile) || isAiTyping}
             className={`p-5 rounded-[1.5rem] text-white transition-all shadow-xl active:scale-95 flex items-center justify-center disabled:bg-gray-200 disabled:shadow-none ${
               isAiActive ? 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700' : 'bg-green-600 shadow-green-100 hover:bg-green-700'
             }`}
@@ -215,7 +344,7 @@ const CommunityChat: React.FC = () => {
         <div className="flex items-center gap-6 px-2">
            <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-             Community Encryption Active
+             Real-time Academic Sync Active
            </p>
            {isAiActive && (
              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] animate-pulse flex items-center gap-2">

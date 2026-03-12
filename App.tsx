@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, FileText, BookOpen, User as UserIcon, LogOut, Bell, Menu, X, Search, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, FileText, BookOpen, User as UserIcon, LogOut, Bell, Menu, X, Search, MessageCircle, BarChart3 } from 'lucide-react';
 import { User } from './types';
 import { storageService } from './services/storageService';
 
@@ -13,6 +13,7 @@ import GlobalFlashcards from './pages/GlobalFlashcards';
 import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import CommunityChat from './pages/CommunityChat';
+import Progress from './pages/Progress';
 
 interface AuthContextType {
   user: User | null;
@@ -98,6 +99,7 @@ const App: React.FC = () => {
             <nav className="flex-1 space-y-3">
               <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" active={location.pathname === '/'} />
               <SidebarItem to="/documents" icon={FileText} label="Library" active={location.pathname.startsWith('/documents')} />
+              <SidebarItem to="/progress" icon={BarChart3} label="Progress" active={location.pathname === '/progress'} />
               <SidebarItem to="/community" icon={MessageCircle} label="Community" active={location.pathname === '/community'} />
               <SidebarItem to="/flashcards" icon={BookOpen} label="Study Sets" active={location.pathname === '/flashcards'} />
               <SidebarItem to="/profile" icon={UserIcon} label="Profile" active={location.pathname === '/profile'} />
@@ -142,6 +144,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/documents/:id" element={<DocumentDetail />} />
+              <Route path="/progress" element={<Progress />} />
               <Route path="/community" element={<CommunityChat />} />
               <Route path="/flashcards" element={<GlobalFlashcards />} />
               <Route path="/profile" element={<Profile />} />

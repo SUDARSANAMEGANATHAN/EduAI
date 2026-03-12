@@ -24,20 +24,34 @@ export const storageService = {
   },
 
   getDocuments: (): Document[] => {
+    const user = storageService.getCurrentSession();
+    if (!user) return [];
     const data = localStorage.getItem(STORAGE_KEYS.DOCS);
-    return data ? JSON.parse(data) : [];
+    const allDocs: Document[] = data ? JSON.parse(data) : [];
+    return allDocs.filter(d => d.userId === user.id);
   },
   
   saveDocument: (doc: Document) => {
-    const docs = storageService.getDocuments();
-    docs.push(doc);
+    const user = storageService.getCurrentSession();
+    if (!user) return;
+    const data = localStorage.getItem(STORAGE_KEYS.DOCS);
+    const docs: Document[] = data ? JSON.parse(data) : [];
+    docs.push({ ...doc, userId: user.id });
     localStorage.setItem(STORAGE_KEYS.DOCS, JSON.stringify(docs));
     storageService.addActivity({
       id: Math.random().toString(36).substr(2, 9),
+      userId: user.id,
       type: 'upload',
       description: `Uploaded: ${doc.title}`,
       timestamp: Date.now()
     });
+  },
+
+  deleteDocument: (id: string) => {
+    const data = localStorage.getItem(STORAGE_KEYS.DOCS);
+    const allDocs: Document[] = data ? JSON.parse(data) : [];
+    const updated = allDocs.filter(d => d.id !== id);
+    localStorage.setItem(STORAGE_KEYS.DOCS, JSON.stringify(updated));
   },
 
   updateDocument: (id: string, updates: Partial<Document>) => {
@@ -50,16 +64,23 @@ export const storageService = {
   },
 
   getFlashcardSets: (): FlashcardSet[] => {
+    const user = storageService.getCurrentSession();
+    if (!user) return [];
     const data = localStorage.getItem(STORAGE_KEYS.SETS);
-    return data ? JSON.parse(data) : [];
+    const allSets: FlashcardSet[] = data ? JSON.parse(data) : [];
+    return allSets.filter(s => s.userId === user.id);
   },
 
   saveFlashcardSet: (set: FlashcardSet) => {
-    const sets = storageService.getFlashcardSets();
-    sets.push(set);
+    const user = storageService.getCurrentSession();
+    if (!user) return;
+    const data = localStorage.getItem(STORAGE_KEYS.SETS);
+    const sets: FlashcardSet[] = data ? JSON.parse(data) : [];
+    sets.push({ ...set, userId: user.id });
     localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(sets));
     storageService.addActivity({
       id: Math.random().toString(36).substr(2, 9),
+      userId: user.id,
       type: 'flashcard',
       description: `Created flashcards: ${set.title}`,
       timestamp: Date.now()
@@ -67,6 +88,13 @@ export const storageService = {
   },
 
   // Added updateFlashcardSet to fix errors in DocumentDetail.tsx and GlobalFlashcards.tsx
+  deleteFlashcardSet: (id: string) => {
+    const data = localStorage.getItem(STORAGE_KEYS.SETS);
+    const allSets: FlashcardSet[] = data ? JSON.parse(data) : [];
+    const updated = allSets.filter(s => s.id !== id);
+    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(updated));
+  },
+
   updateFlashcardSet: (id: string, updates: Partial<FlashcardSet>) => {
     const sets = storageService.getFlashcardSets();
     const index = sets.findIndex(s => s.id === id);
@@ -77,14 +105,27 @@ export const storageService = {
   },
 
   getQuizzes: (): Quiz[] => {
+    const user = storageService.getCurrentSession();
+    if (!user) return [];
     const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
-    return data ? JSON.parse(data) : [];
+    const allQuizzes: Quiz[] = data ? JSON.parse(data) : [];
+    return allQuizzes.filter(q => q.userId === user.id);
   },
 
   saveQuiz: (quiz: Quiz) => {
-    const quizzes = storageService.getQuizzes();
-    quizzes.push(quiz);
+    const user = storageService.getCurrentSession();
+    if (!user) return;
+    const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
+    const quizzes: Quiz[] = data ? JSON.parse(data) : [];
+    quizzes.push({ ...quiz, userId: user.id });
     localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(quizzes));
+  },
+
+  deleteQuiz: (id: string) => {
+    const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
+    const allQuizzes: Quiz[] = data ? JSON.parse(data) : [];
+    const updated = allQuizzes.filter(q => q.id !== id);
+    localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(updated));
   },
 
   updateQuiz: (id: string, updates: Partial<Quiz>) => {
@@ -97,13 +138,19 @@ export const storageService = {
   },
 
   getChats: (docId: string): ChatMessage[] => {
-    const chats = localStorage.getItem(`${STORAGE_KEYS.CHATS}_${docId}`);
-    return chats ? JSON.parse(chats) : [];
+    const user = storageService.getCurrentSession();
+    if (!user) return [];
+    const chatsData = localStorage.getItem(`${STORAGE_KEYS.CHATS}_${docId}`);
+    const allChats: ChatMessage[] = chatsData ? JSON.parse(chatsData) : [];
+    return allChats.filter(c => c.userId === user.id);
   },
 
   saveChatMessage: (docId: string, message: ChatMessage) => {
-    const chats = storageService.getChats(docId);
-    chats.push(message);
+    const user = storageService.getCurrentSession();
+    if (!user) return;
+    const chatsData = localStorage.getItem(`${STORAGE_KEYS.CHATS}_${docId}`);
+    const chats: ChatMessage[] = chatsData ? JSON.parse(chatsData) : [];
+    chats.push({ ...message, userId: user.id });
     localStorage.setItem(`${STORAGE_KEYS.CHATS}_${docId}`, JSON.stringify(chats));
   },
 
@@ -122,13 +169,19 @@ export const storageService = {
   },
 
   getActivities: (): Activity[] => {
+    const user = storageService.getCurrentSession();
+    if (!user) return [];
     const data = localStorage.getItem(STORAGE_KEYS.ACTIVITY);
-    return data ? JSON.parse(data) : [];
+    const allActivities: Activity[] = data ? JSON.parse(data) : [];
+    return allActivities.filter(a => a.userId === user.id);
   },
 
   addActivity: (activity: Activity) => {
-    const activities = storageService.getActivities();
-    activities.unshift(activity);
-    localStorage.setItem(STORAGE_KEYS.ACTIVITY, JSON.stringify(activities.slice(0, 10)));
+    const user = storageService.getCurrentSession();
+    if (!user) return;
+    const data = localStorage.getItem(STORAGE_KEYS.ACTIVITY);
+    const activities: Activity[] = data ? JSON.parse(data) : [];
+    activities.unshift({ ...activity, userId: user.id });
+    localStorage.setItem(STORAGE_KEYS.ACTIVITY, JSON.stringify(activities.slice(0, 50)));
   }
 };

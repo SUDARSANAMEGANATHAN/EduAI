@@ -67,9 +67,10 @@ const Documents: React.FC = () => {
       // Perform actual text extraction instead of using a placeholder
       const extractedText = await extractTextFromPDF(base64Data);
       
+      const user = storageService.getCurrentSession();
       const newDoc: Document = {
         id: Math.random().toString(36).substr(2, 9),
-        userId: '1',
+        userId: user?.id || '1',
         title: file.name.replace('.pdf', ''),
         filePath: base64Data,
         extractedText: extractedText,
@@ -89,9 +90,8 @@ const Documents: React.FC = () => {
 
   const deleteDoc = (id: string) => {
     if (confirm('Are you sure you want to delete this document?')) {
-      const updated = docs.filter(d => d.id !== id);
-      localStorage.setItem('ai_learn_docs', JSON.stringify(updated));
-      setDocs(updated);
+      storageService.deleteDocument(id);
+      setDocs(docs.filter(d => d.id !== id));
     }
   };
 

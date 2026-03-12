@@ -1,4 +1,15 @@
 
+export interface Recommendation {
+  id: string;
+  userId: string;
+  type: 'review' | 'quiz' | 'concept' | 'explore';
+  title: string;
+  description: string;
+  targetId?: string; // ID of the document, set, or quiz
+  priority: 'low' | 'medium' | 'high';
+  timestamp: number;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -32,6 +43,7 @@ export interface Flashcard {
 
 export interface FlashcardSet {
   id: string;
+  userId: string;
   documentId: string;
   title: string;
   cards: Flashcard[];
@@ -48,6 +60,7 @@ export interface QuizQuestion {
 
 export interface Quiz {
   id: string;
+  userId: string;
   documentId: string;
   title: string;
   questions: QuizQuestion[];
@@ -57,6 +70,7 @@ export interface Quiz {
 
 export interface Activity {
   id: string;
+  userId: string;
   type: 'upload' | 'flashcard' | 'quiz' | 'chat' | 'concept';
   description: string;
   timestamp: number;
@@ -64,6 +78,7 @@ export interface Activity {
 
 export interface ChatMessage {
   role: 'user' | 'model';
+  userId: string;
   content: string;
   timestamp: number;
 }
@@ -75,4 +90,10 @@ export interface CommunityMessage {
   userAvatar: string;
   content: string;
   timestamp: number;
+  file?: {
+    url: string;
+    name: string;
+    type: string;
+    size: number;
+  };
 }
